@@ -11,6 +11,6 @@ Reads a published Google Sheets CSV feed via Papa Parse. Custom Leaflet map pane
 * [Leaflet](https://leafletjs.com/): Interactive mapping library
 * [OpenStreetMap](https://www.openstreetmap.org/) Map tiles and geographic data
 * [Papa Parse](https://www.papaparse.com/) In-browser CSV parsing for live data feeds 
-* [GitHub Pages](https://pages.github.com/) Static site hosting directly from the repository
+* [GitHub Pages](https://pages.github.com/) Static site hosting directly from the source
 
 Visits are logged on mobile using a Google Form. A Google Apps Script extracts verified venue coordinates from the shared Google Maps link. The form responses sheet publishes automatically as a public CSV. When the page loads, Leaflet fetches the latest CSV and plots every pin live.
