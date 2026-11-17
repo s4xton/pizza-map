@@ -121,7 +121,177 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <script>
-var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTBfwsJWM9BltaPVCYsrBSKaZD3iSo1T3ZybsRvfUTfE1CuZF3szp-FJDbkWuUGEFs0NmdBc4Ukqx3/pub?gid=1165000565&single=true&output=csv'; /\* 1\. Initialise Map \*/ var map = L.map('map').setView([55.9533, -3.1883], 6); /\* Basemap Layer \*/ var host = ['server', 'arcgisonline', 'com'].join('.'); var path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World_Light_Gray_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/'); L.tileLayer('https://' + host + '/' + path, { attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ', maxZoom: 16 }).addTo(map); /\* 2\. Custom Stacking Panes \*/ map.createPane('closedPane'); map.getPane('closedPane').style.zIndex = 350; map.createPane('visitedPane'); map.getPane('visitedPane').style.zIndex = 380; map.createPane('starPane'); map.getPane('starPane').style.zIndex = 410; map.createPane('topStarPane'); map.getPane('topStarPane').style.zIndex = 420; /\* 3\. Layer Management \*/ var markersGroup = L.featureGroup(); map.addLayer(markersGroup); var allMarkers = []; var currentFilter = 'all'; var showClosed = false; /\* Helper: Create Circle Marker \*/ function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) { var pane = 'visitedPane'; var fillColor = '#10b981'; var radius = 6; var opacity = 0.9; var strokeColor = '#ffffff'; if (isClosed) { pane = 'closedPane'; fillColor = '#ef4444'; radius = 4.5; opacity = 0.5; strokeColor = '#94a3b8'; } else if (isTwoStar) { pane = 'topStarPane'; fillColor = '#d97706'; radius = 8; opacity = 0.95; } else if (isOneStar) { pane = 'starPane'; fillColor = '#2563eb'; radius = 6.5; opacity = 0.9; } return L.circleMarker([lat, lng], { pane: pane, radius: radius, fillColor: fillColor, color: strokeColor, weight: 1.5, fillOpacity: opacity }); } /\* 4\. Parse CSV and Build Pins \*/ Papa.parse(CSV\_URL, { download: true, header: true, skipEmptyLines: true, complete: function(results) { results.data.forEach(function(row) { var lat = parseFloat(row.Lat); var lng = parseFloat(row.Lng); var venue = row.Venue || 'Pizzeria'; var rating = (row.Rating || '').trim(); var address = row.Address || ''; var notes = row.Notes || ''; var date = row.Date || ''; var venueUrl = (row['Venue URL'] || '').trim(); var visitUrl = (row['Visit URL'] || '').trim(); if (!isNaN(lat) && !isNaN(lng)) { var isClosed = rating.indexOf('×') !== -1; var isTwoStar = rating.indexOf('★★') !== -1; var isOneStar = !isTwoStar && (rating.indexOf('★') !== -1); var marker = createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar); var badgeHtml = '<span>✓ Visited</span>'; if (isClosed) { badgeHtml = '<span>× Permanently Closed</span>'; } else if (isTwoStar) { badgeHtml = '<span>★★ Worth a journey</span>'; } else if (isOneStar) { badgeHtml = '<span>★ Worth a visit if nearby</span>'; } var linksHtml = ''; if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" rel="noopener">Website ↗</a>'; } if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" rel="noopener">Post / Photo ↗</a>'; } var titleHtml = isClosed ? '<div><s>' + venue + '</s><span>(Closed)</span></div>' : '<div>' + venue + '</div>'; var popupContent = titleHtml + '<div>' + badgeHtml + '</div>' + (date ? '<div>Visited: ' + date + '</div>' : '') + (address ? '<div>' + address + '</div>' : '') + (notes ? '<div>"' + notes + '"</div>' : '') + (linksHtml ? '<div>' + linksHtml + '</div>' : ''); marker.bindPopup(popupContent); marker.meta = { isClosed: isClosed, isTwoStar: isTwoStar, isOneStar: isOneStar }; allMarkers.push(marker); } }); applyFilters(); if (allMarkers.length > 0) { map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] }); } } }); /\* 5\. Filter Execution \*/ function applyFilters() { markersGroup.clearLayers(); allMarkers.forEach(function(m) { if (m.meta.isClosed && !showClosed) { return; } if (currentFilter === 'all') { markersGroup.addLayer(m); } else if (currentFilter === '★★' && m.meta.isTwoStar) { markersGroup.addLayer(m); } else if (currentFilter === '★' && m.meta.isOneStar) { markersGroup.addLayer(m); } else if (currentFilter === '✓' && (!m.meta.isTwoStar && !m.meta.isOneStar)) { markersGroup.addLayer(m); } }); } /\* 6\. Filter Controls \*/ document.querySelectorAll('.filter-btn').forEach(function(btn) { btn.addEventListener('click', function() { document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); }); btn.classList.add('active'); currentFilter = btn.getAttribute('data-filter'); applyFilters(); }); }); document.getElementById('toggleClosed').addEventListener('change', function(e) { showClosed = e.target.checked; applyFilters(); });
+    var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTBfwsJWM9BltaPVCYsrBSKaZD3iSo1T3ZybsRvfUTfE1CuZF3szp-FJDbkWuUGEFs0NmdBc4Ukqx3/pub?gid=1165000565&single=true&output=csv';
+
+/* 1. Initialise Map */
+var map = L.map('map').setView([55.9533, -3.1883], 6);
+
+/* Dynamic Esri Light Gray basemap */
+var host = ['server', 'arcgisonline', 'com'].join('.');
+var path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World_Light_Gray_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/');
+L.tileLayer('https://' + host + '/' + path, {
+  attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+  maxZoom: 16
+}).addTo(map);
+
+/* 2. Custom Stacking Panes */
+map.createPane('closedPane');
+map.getPane('closedPane').style.zIndex = 350;
+
+map.createPane('visitedPane');
+map.getPane('visitedPane').style.zIndex = 380;
+
+map.createPane('starPane');
+map.getPane('starPane').style.zIndex = 410;
+
+map.createPane('topStarPane');
+map.getPane('topStarPane').style.zIndex = 420;
+
+/* 3. Layer Management */
+var markersGroup = L.featureGroup();
+map.addLayer(markersGroup);
+
+var allMarkers = [];
+var currentFilter = 'all';
+var showClosed = false;
+
+/* Marker helper */
+function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) {
+  var pane = 'visitedPane';
+  var fillColor = '#10b981';
+  var radius = 6;
+  var opacity = 0.9;
+  var strokeColor = '#ffffff';
+
+  if (isClosed) {
+    pane = 'closedPane';
+    fillColor = '#ef4444';
+    radius = 4.5;
+    opacity = 0.5;
+    strokeColor = '#94a3b8';
+  } else if (isTwoStar) {
+    pane = 'topStarPane';
+    fillColor = '#d97706';
+    radius = 8;
+    opacity = 0.95;
+  } else if (isOneStar) {
+    pane = 'starPane';
+    fillColor = '#2563eb';
+    radius = 6.5;
+    opacity = 0.9;
+  }
+
+  return L.circleMarker([lat, lng], {
+    pane: pane,
+    radius: radius,
+    fillColor: fillColor,
+    color: strokeColor,
+    weight: 1.5,
+    fillOpacity: opacity
+  });
+}
+
+/* 4. Parse CSV and build pins */
+Papa.parse(CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(results) {
+    results.data.forEach(function(row) {
+      var lat = parseFloat(row.Lat);
+      var lng = parseFloat(row.Lng);
+      var venue = row.Venue || 'Pizzeria';
+      var rating = (row.Rating || '').trim();
+      var address = row.Address || '';
+      var notes = row.Notes || '';
+      var date = row.Date || '';
+      var venueUrl = (row['Venue URL'] || '').trim();
+      var visitUrl = (row['Visit URL'] || '').trim();
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        var isClosed = rating.indexOf('×') !== -1;
+        var isTwoStar = rating.indexOf('★★') !== -1;
+        var isOneStar = !isTwoStar && (rating.indexOf('★') !== -1);
+
+        var marker = createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar);
+
+        var badgeHtml = '<span class="popup-badge badge-visited">✓ Visited</span>';
+        if (isClosed) {
+          badgeHtml = '<span class="popup-badge badge-closed">× Permanently Closed</span>';
+        } else if (isTwoStar) {
+          badgeHtml = '<span class="popup-badge badge-two-star">★★ Worth a journey</span>';
+        } else if (isOneStar) {
+          badgeHtml = '<span class="popup-badge badge-one-star">★ Worth a visit if nearby</span>';
+        }
+
+        var linksHtml = '';
+        if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
+        if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post / Photo ↗</a>'; }
+
+        var titleHtml = isClosed 
+          ? '<div class="popup-title closed"><s>' + venue + '</s><span class="closed-tag">(Closed)</span></div>'
+          : '<div class="popup-title">' + venue + '</div>';
+
+        var popupContent = titleHtml +
+          '<div>' + badgeHtml + '</div>' +
+          (date ? '<div class="popup-meta">Visited: ' + date + '</div>' : '') +
+          (address ? '<div class="popup-address">' + address + '</div>' : '') +
+          (notes ? '<div class="popup-notes">"' + notes + '"</div>' : '') +
+          (linksHtml ? '<div class="popup-links">' + linksHtml + '</div>' : '');
+
+        marker.bindPopup(popupContent);
+
+        marker.meta = {
+          isClosed: isClosed,
+          isTwoStar: isTwoStar,
+          isOneStar: isOneStar
+        };
+
+        allMarkers.push(marker);
+      }
+    });
+
+    applyFilters();
+
+    if (allMarkers.length > 0) {
+      map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] });
+    }
+  }
+});
+
+/* 5. Filter logic */
+function applyFilters() {
+  markersGroup.clearLayers();
+
+  allMarkers.forEach(function(m) {
+    if (m.meta.isClosed && !showClosed) { return; }
+
+    if (currentFilter === 'all') {
+      markersGroup.addLayer(m);
+    } else if (currentFilter === '★★' && m.meta.isTwoStar) {
+      markersGroup.addLayer(m);
+    } else if (currentFilter === '★' && m.meta.isOneStar) {
+      markersGroup.addLayer(m);
+    } else if (currentFilter === '✓' && (!m.meta.isTwoStar && !m.meta.isOneStar)) {
+      markersGroup.addLayer(m);
+    }
+  });
+}
+
+/* 6. Event listeners */
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentFilter = btn.getAttribute('data-filter');
+    applyFilters();
+  });
+});
+
+document.getElementById('toggleClosed').addEventListener('change', function(e) {
+  showClosed = e.target.checked;
+  applyFilters();
+});
   </script>
 </body>
 </html>
