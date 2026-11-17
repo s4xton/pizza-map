@@ -163,7 +163,7 @@
         });
 
         // Fit map bounds to encompass all plotted pins
-        if (allMarkers.length &gt; 0) {
+        if (allMarkers.length > 0) {
           map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] });
         }
       }
@@ -177,7 +177,7 @@
         const filter = btn.getAttribute('data-filter');
 
         markersGroup.clearLayers();
-        allMarkers.forEach(m =&gt; {
+        allMarkers.forEach(m => {
           if (filter === 'all' || m.filterCategory === filter) {
             markersGroup.addLayer(m);
           }
