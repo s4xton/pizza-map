@@ -100,16 +100,16 @@
 <body>
 
   <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">All Open</button>
+    <button class="filter-btn active" data-filter="all">All</button>
     <button class="filter-btn" data-filter="★★">★★ Excellent</button>
-    <button class="filter-btn" data-filter="★">★ Recommended</button>
+    <button class="filter-btn" data-filter="★">★ Recommend</button>
     <button class="filter-btn" data-filter="✓">✓ Visited</button>
 
     <div class="filter-separator"></div>
 
     <label class="toggle-closed" title="Show or hide permanently closed venues">
       <input type="checkbox" id="toggleClosed" />
-      <span>Inclused Closed (×)</span>
+      <span>Closed</span>
     </label>
   </div>
 
@@ -219,14 +219,14 @@ Papa.parse(CSV_URL, {
         if (isClosed) {
           badgeHtml = '<span class="popup-badge badge-closed">× Permanently Closed</span>';
         } else if (isTwoStar) {
-          badgeHtml = '<span class="popup-badge badge-two-star">★★ Worth a journey</span>';
+          badgeHtml = '<span class="popup-badge badge-two-star">★★ Excellent</span>';
         } else if (isOneStar) {
-          badgeHtml = '<span class="popup-badge badge-one-star">★ Worth a visit if nearby</span>';
+          badgeHtml = '<span class="popup-badge badge-one-star">★ Recommend</span>';
         }
 
         var linksHtml = '';
         if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
-        if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post / Photo ↗</a>'; }
+        if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post ↗</a>'; }
 
         var titleHtml = isClosed 
           ? '<div class="popup-title closed"><s>' + venue + '</s><span class="closed-tag">(Closed)</span></div>'
