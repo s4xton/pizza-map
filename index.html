@@ -19,11 +19,12 @@
       right: 15px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(6px);
       padding: 6px 10px;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
       display: flex;
+      align-items: center;
       gap: 6px;
       flex-wrap: wrap;
     }
@@ -45,25 +46,71 @@
       border-color: #0f172a;
     }
 
+    .filter-separator {
+      width: 1px;
+      height: 22px;
+      background: #cbd5e1;
+      margin: 0 4px;
+    }
+
+    .toggle-closed {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      user-select: none;
+    }
+    .toggle-closed input {
+      cursor: pointer;
+      accent-color: #ef4444;
+    }
+
     /* Popup Styling */
-    .leaflet-popup-content-wrapper { border-radius: 8px; padding: 4px; }
-    .popup-title { font-weight: 700; font-size: 16px; margin-bottom: 2px; color: #0f172a; }
-    .popup-meta { font-size: 13px; color: #64748b; margin-bottom: 6px; }
-    .popup-rating { font-weight: 600; color: #d97706; }
+    .leaflet-popup-content-wrapper { border-radius: 8px; padding: 6px; }
+    .popup-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: #0f172a; }
+    .popup-title.closed s { color: #64748b; }
+    .closed-tag { font-size: 12px; font-weight: 700; color: #ef4444; margin-left: 4px; }
+    
+    .popup-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-bottom: 6px;
+    }
+    .badge-two-star { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-one-star { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-visited  { background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-closed   { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    .popup-meta { font-size: 12px; color: #64748b; margin-bottom: 6px; }
     .popup-address { font-size: 12px; color: #475569; margin-bottom: 6px; line-height: 1.3; }
     .popup-notes { font-size: 12px; font-style: italic; color: #334155; margin-bottom: 8px; }
-    .popup-links { display: flex; gap: 10px; font-size: 12px; margin-top: 6px; }
-    .popup-links a { color: #2563eb; text-decoration: none; font-weight: 500; }
+    .popup-links { display: flex; gap: 10px; font-size: 12px; margin-top: 6px; border-top: 1px solid #f1f5f9; padding-top: 6px; }
+    .popup-links a { color: #2563eb; text-decoration: none; font-weight: 600; }
     .popup-links a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 
   <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">All</button>
-    <button class="filter-btn" data-filter="★★">★★</button>
-    <button class="filter-btn" data-filter="★">★</button>
-    <button class="filter-btn" data-filter="✓">Visited (✓)</button>
+    <button class="filter-btn active" data-filter="all">All Open</button>
+    <button class="filter-btn" data-filter="★★">★★ Excellent</button>
+    <button class="filter-btn" data-filter="★">★ Recommended</button>
+    <button class="filter-btn" data-filter="✓">✓ Visited</button>
+
+    <div class="filter-separator"></div>
+
+    <label class="toggle-closed" title="Show or hide permanently closed venues">
+      <input type="checkbox" id="toggleClosed" />
+      <span>Inclused Closed (×)</span>
+    </label>
   </div>
 
   <div id="map"></div>
@@ -74,116 +121,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <script>
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTBfwsJWM9BltaPVCYsrBSKaZD3iSo1T3ZybsRvfUTfE1CuZF3szp-FJDbkWuUGEFs0NmdBc4Ukqx3/pub?gid=1165000565&single=true&output=csv';
-
-    // Initialise Map
-    const map = L.map('map').setView([55.9533, -3.1883], 6);
-
-    // Base tiles
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
-      maxZoom: 16
-    }).addTo(map);
-
-    // Standard feature group: displays every individual pin without clustering
-    const markersGroup = L.featureGroup();
-    map.addLayer(markersGroup);
-
-    let allMarkers = [];
-
-    // Colour coding per rating
-    function getMarkerColor(rating) {
-      if (!rating) return '#64748b';
-      if (rating.includes('★★')) return '#d97706'; // Amber / Gold
-      if (rating.includes('★')) return '#2563eb';  // Blue
-      if (rating.includes('×')) return '#ef4444';  // Red (disliked/poor)
-      return '#10b981';                            // Green / Slate for Visited (✓)
-    }
-
-    function createCircleMarker(lat, lng, rating) {
-      return L.circleMarker([lat, lng], {
-        radius: 7,
-        fillColor: getMarkerColor(rating),
-        color: '#ffffff',
-        weight: 1.5,
-        opacity: 1,
-        fillOpacity: 0.85
-      });
-    }
-
-    // Fetch and parse the live CSV
-    Papa.parse(CSV_URL, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        results.data.forEach(row => {
-          const lat = parseFloat(row.Lat);
-          const lng = parseFloat(row.Lng);
-          const venue = row.Venue || 'Pizzeria';
-          const rating = (row.Rating || '').trim();
-          const address = row.Address || '';
-          const notes = row.Notes || '';
-          const date = row.Date || '';
-          const venueUrl = (row['Venue URL'] || '').trim();
-          const visitUrl = (row['Visit URL'] || '').trim();
-
-          // Only plot valid numeric coordinates
-          if (!isNaN(lat) && !isNaN(lng)) {
-            const marker = createCircleMarker(lat, lng, rating);
-
-            let linksHtml = '';
-            if (venueUrl) linksHtml += `<a href="${venueUrl}" target="_blank" rel="noopener">Website ↗</a>`;
-            if (visitUrl) linksHtml += `<a href="${visitUrl}" target="_blank" rel="noopener">Post / Photo ↗</a>`;
-
-            const popupContent = `
-              <div class="popup-title">${venue}</div>
-              <div class="popup-meta">
-                <span class="popup-rating">${rating || 'Visited'}</span>
-                ${date ? ` • <span>${date}</span>` : ''}
-              </div>
-              ${address ? `<div class="popup-address">${address}</div>` : ''}
-              ${notes ? `<div class="popup-notes">"${notes}"</div>` : ''}
-              ${linksHtml ? `<div class="popup-links">${linksHtml}</div>` : ''}
-            `;
-            marker.bindPopup(popupContent);
-
-            // Categorize for filtering
-            if (rating.includes('★★')) {
-              marker.filterCategory = '★★';
-            } else if (rating.includes('★')) {
-              marker.filterCategory = '★';
-            } else {
-              marker.filterCategory = '✓';
-            }
-
-            allMarkers.push(marker);
-            markersGroup.addLayer(marker);
-          }
-        });
-
-        // Fit map bounds to encompass all plotted pins
-        if (allMarkers.length > 0) {
-          map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] });
-        }
-      }
-    });
-
-    // Handle filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const filter = btn.getAttribute('data-filter');
-
-        markersGroup.clearLayers();
-        allMarkers.forEach(m => {
-          if (filter === 'all' || m.filterCategory === filter) {
-            markersGroup.addLayer(m);
-          }
-        });
-      });
-    });
+   const CSV\_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTBfwsJWM9BltaPVCYsrBSKaZD3iSo1T3ZybsRvfUTfE1CuZF3szp-FJDbkWuUGEFs0NmdBc4Ukqx3/pub?gid=1165000565&amp;single=true&amp;output=csv'; // 1\. Initialise Map const map = L.map('map').setView([55.9533, -3.1883], 6); // Dynamic Esri Light Gray basemap (avoids link filter issues) const host = ['server', 'arcgisonline', 'com'].join('.'); const path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World\_Light\_Gray\_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/'); L.tileLayer('https://' + host + '/' + path, { attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ', maxZoom: 16 }).addTo(map); // 2\. Custom Stacking Panes (guarantees closed pins stay at the bottom, 2-stars on top) map.createPane('closedPane'); map.getPane('closedPane').style.zIndex = 350; // Lowest layer map.createPane('visitedPane'); map.getPane('visitedPane').style.zIndex = 380; map.createPane('starPane'); map.getPane('starPane').style.zIndex = 410; map.createPane('topStarPane'); map.getPane('topStarPane').style.zIndex = 420; // Highest layer // 3\. Layer management const markersGroup = L.featureGroup(); map.addLayer(markersGroup); let allMarkers = []; let currentFilter = 'all'; let showClosed = false; // Helper: Style pins and assign to the correct pane function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) { let pane = 'visitedPane'; let fillColor = '#10b981'; // Green (Visited) let radius = 6; let opacity = 0.9; let strokeColor = '#ffffff'; if (isClosed) { pane = 'closedPane'; fillColor = '#ef4444'; // Red radius = 4.5; // Smaller dot opacity = 0.5; // Semi-transparent strokeColor = '#94a3b8'; } else if (isTwoStar) { pane = 'topStarPane'; fillColor = '#d97706'; // Gold radius = 8; opacity = 0.95; } else if (isOneStar) { pane = 'starPane'; fillColor = '#2563eb'; // Blue radius = 6.5; opacity = 0.9; } return L.circleMarker([lat, lng], { pane: pane, radius: radius, fillColor: fillColor, color: strokeColor, weight: 1.5, fillOpacity: opacity }); } // 4\. Fetch and render Google Sheets CSV Papa.parse(CSV\_URL, { download: true, header: true, skipEmptyLines: true, complete: function(results) { results.data.forEach(row =&gt; { const lat = parseFloat(row.Lat); const lng = parseFloat(row.Lng); const venue = row.Venue || 'Pizzeria'; const rating = (row.Rating || '').trim(); const address = row.Address || ''; const notes = row.Notes || ''; const date = row.Date || ''; const venueUrl = (row['Venue URL'] || '').trim(); const visitUrl = (row['Visit URL'] || '').trim(); if (!isNaN(lat) &amp;&amp; !isNaN(lng)) { const isClosed = rating.includes('×'); const isTwoStar = rating.includes('★★'); const isOneStar = !isTwoStar &amp;&amp; rating.includes('★'); const marker = createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar); // Descriptive badge let badgeHtml = '<span>✓ Visited</span>'; if (isClosed) { badgeHtml = '<span>× Permanently Closed</span>'; } else if (isTwoStar) { badgeHtml = '<span>★★ Worth a journey</span>'; } else if (isOneStar) { badgeHtml = '<span>★ Worth a visit if nearby</span>'; } let linksHtml = ''; if (venueUrl) linksHtml += \`<a href="${venueUrl}" rel="noopener">Website ↗</a>\`; if (visitUrl) linksHtml += \`<a href="${visitUrl}" rel="noopener">Post / Photo ↗</a>\`; const titleHtml = isClosed ? \`<div><s>${venue}</s><span>(Closed)</span></div>\` : \`<div>${venue}</div>\`; const popupContent = \` ${titleHtml} <div>${badgeHtml}</div> ${date ? \`<div>Visited: ${date}</div>\` : ''} ${address ? \`<div>${address}</div>\` : ''} ${notes ? \`<div>"${notes}"</div>\` : ''} ${linksHtml ? \`<div>${linksHtml}</div>\` : ''} \`; marker.bindPopup(popupContent); // Store metadata on marker for filtering marker.meta = { isClosed: isClosed, isTwoStar: isTwoStar, isOneStar: isOneStar }; allMarkers.push(marker); } }); // Initial filter run (shows all open places by default) applyFilters(); if (allMarkers.length &gt; 0) { map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] }); } } }); // 5\. Filter Logic function applyFilters() { markersGroup.clearLayers(); allMarkers.forEach(m =&gt; { // If closed is unchecked and the place is closed, hide it if (m.meta.isClosed &amp;&amp; !showClosed) return; if (currentFilter === 'all') { markersGroup.addLayer(m); } else if (currentFilter === '★★' &amp;&amp; m.meta.isTwoStar) { markersGroup.addLayer(m); } else if (currentFilter === '★' &amp;&amp; m.meta.isOneStar) { markersGroup.addLayer(m); } else if (currentFilter === '✓' &amp;&amp; (!m.meta.isTwoStar &amp;&amp; !m.meta.isOneStar)) { markersGroup.addLayer(m); } }); } // 6\. Event Listeners document.querySelectorAll('.filter-btn').forEach(btn =&gt; { btn.addEventListener('click', () =&gt; { document.querySelectorAll('.filter-btn').forEach(b =&gt; b.classList.remove('active')); btn.classList.add('active'); currentFilter = btn.getAttribute('data-filter'); applyFilters(); }); }); document.getElementById('toggleClosed').addEventListener('change', (e) =&gt; { showClosed = e.target.checked; applyFilters(); });
   </script>
 </body>
 </html>
