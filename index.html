@@ -82,10 +82,10 @@
     // Initialise Map
     const map = L.map('map').setView([55.9533, -3.1883], 6);
 
-    // Clean, readable CartoDB Positron base tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      maxZoom: 19
+    // Base tiles
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
+      maxZoom: 16
     }).addTo(map);
 
     const clusterGroup = L.markerClusterGroup({
