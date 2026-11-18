@@ -225,8 +225,9 @@ Papa.parse(CSV_URL, {
         }
 
         var linksHtml = '';
-        if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
         if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post ↗</a>'; }
+        if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
+
 
         var titleHtml = isClosed 
           ? '<div class="popup-title closed"><s>' + venue + '</s><span class="closed-tag">(Closed)</span></div>'
