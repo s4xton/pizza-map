@@ -313,7 +313,21 @@ Papa.parse(CSV_URL, {
         var popupContent = titleHtml +
           '<div>' + badgeHtml + '</div>' +
           (date ? '<div class="popup-meta">Last visited: ' + date + '</div>' : '') +
-          (address ? '<div class="popup-address">' + address + '</div>' : '') +
+          var mapNavUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((venue ? venue + ' ' : '') + address);
+
+var addressHtml = address
+  ? '<div class="popup-address"><a href="' + mapNavUrl + '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' + address + '</a></div>'
+  : '';
+
+var popupContent = titleHtml +
+  '<div>' + badgeHtml + '</div>' +
+  (date ? '<div class="popup-meta">Last visited: ' + date + '</div>' : '') +
+  addressHtml +
+  (notes ? '<div class="popup-notes">"' + notes + '"</div>' : '') +
+  (linksHtml ? '<div class="popup-links">' + linksHtml + '</div>' : '');
+
+marker.bindPopup(popupContent);
+
           (notes ? '<div class="popup-notes">"' + notes + '"</div>' : '') +
           (linksHtml ? '<div class="popup-links">' + linksHtml + '</div>' : '');
 
@@ -335,7 +349,7 @@ Papa.parse(CSV_URL, {
       [24.0, -125.0],
       [58.0, 16.0]
     );
-    var isMobile = window.innerWidth >= 768;
+    var isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
       // Sets a direct view on mobile so it doesn't zoom too far out on narrow screens
@@ -386,3 +400,4 @@ document.getElementById('toggleClosed').addEventListener('change', function(e) {
   </script>
 </body>
 </html>
+
