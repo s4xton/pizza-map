@@ -95,6 +95,33 @@
     .popup-links { display: flex; gap: 10px; font-size: 12px; margin-top: 6px; border-top: 1px solid #f1f5f9; padding-top: 6px; }
     .popup-links a { color: #2563eb; text-decoration: none; font-weight: 600; }
     .popup-links a:hover { text-decoration: underline; }
+
+    /* Location Button (FAB) */
+    .locate-btn {
+      position: absolute;
+      bottom: 24px;
+      right: 20px;
+      z-index: 1000;
+      width: 44px;
+      height: 44px;
+      background: #ffffff;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .locate-btn:active {
+      background: #f0f0f0;
+    }
+    .locate-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: #333333;
+    }
   </style>
 </head>
 <body>
@@ -115,6 +142,12 @@
 
   <div id="map"></div>
 
+  <button id="locate-me" class="locate-btn" title="Find my location" aria-label="Find my location">
+  <svg viewBox="0 0 24 24">
+    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+  </svg>
+  </button>
+  
   <!-- Leaflet & PapaParse Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -125,6 +158,38 @@
 
 /* 1. Initialise Map */
 var map = L.map('map').setView([40, -35], 3);
+
+// --- Geolocation FAB Logic ---
+    var locateBtn = document.getElementById('locate-me');
+    var userLocationMarker = null;
+    
+    if (locateBtn) {
+      locateBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Tells Leaflet to find device location, center on it, and zoom in
+        map.locate({ setView: true, maxZoom: 14, enableHighAccuracy: true });
+      });
+    }
+    
+    map.on('locationfound', function(e) {
+      if (userLocationMarker) {
+        userLocationMarker.setLatLng(e.latlng);
+      } else {
+        // Drops a clean blue pulsating/solid dot at user's location
+        userLocationMarker = L.circleMarker(e.latlng, {
+          radius: 8,
+          fillColor: '#1a73e8',
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).addTo(map);
+      }
+    });
+    
+    map.on('locationerror', function(e) {
+      alert('Unable to find your location. Please ensure location services are enabled on your device.');
+    });
 
 /* Dynamic Esri Light Gray basemap */
 var host = ['server', 'arcgisonline', 'com'].join('.');
