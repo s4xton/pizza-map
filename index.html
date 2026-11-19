@@ -71,6 +71,39 @@
       accent-color: #ef4444;
     }
 
+    /* Stack filter options on narrow displays */
+    @media (max-width: 768px) {
+      .filter-bar {
+        top: 12px;
+        right: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+        padding: 6px;
+        min-width: 132px;
+      }
+
+      .filter-btn {
+        text-align: left;
+        padding: 6px 10px;
+        font-size: 12px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .filter-separator {
+        width: 100%;
+        height: 1px;
+        margin: 2px 0;
+      }
+
+      .toggle-closed {
+        padding: 4px 6px;
+        font-size: 12px;
+        justify-content: flex-start;
+      }
+    }
+
     /* Popup Styling */
     .leaflet-popup-content-wrapper { border-radius: 8px; padding: 6px; }
     .popup-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: #0f172a; }
@@ -370,6 +403,12 @@
     }
 
     /* 6. Event listeners */
+    var filterBar = document.querySelector('.filter-bar');
+    if (filterBar) {
+      L.DomEvent.disableClickPropagation(filterBar);
+      L.DomEvent.disableScrollPropagation(filterBar);
+    }
+
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
