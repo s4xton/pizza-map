@@ -55,6 +55,23 @@
       margin: 0 4px;
     }
 
+    .theme-btn {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .theme-btn:hover { background: #e2e8f0; }
+    .theme-label { display: none; }
+
     .toggle-closed {
       display: flex;
       align-items: center;
@@ -84,12 +101,20 @@
         min-width: 132px;
       }
 
-      .filter-btn {
+      .filter-btn, .theme-btn {
         text-align: left;
         padding: 6px 10px;
         font-size: 12px;
         width: 100%;
         box-sizing: border-box;
+      }
+
+      .theme-btn {
+        justify-content: flex-start;
+      }
+      .theme-label {
+        display: inline;
+        font-weight: 500;
       }
 
       .filter-separator {
@@ -103,6 +128,89 @@
         font-size: 12px;
         justify-content: flex-start;
       }
+    }
+
+    /* Dark Mode Theme */
+    body.dark-mode {
+      background: #0f172a;
+    }
+    body.dark-mode .filter-bar {
+      background: rgba(15, 23, 42, 0.92);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+    body.dark-mode .filter-btn,
+    body.dark-mode .theme-btn {
+      border-color: #334155;
+      background: #1e293b;
+      color: #f1f5f9;
+    }
+    body.dark-mode .filter-btn:hover,
+    body.dark-mode .theme-btn:hover {
+      background: #334155;
+    }
+    body.dark-mode .filter-btn.active {
+      background: #38bdf8;
+      color: #0f172a;
+      border-color: #38bdf8;
+      font-weight: 600;
+    }
+    body.dark-mode .filter-separator {
+      background: #334155;
+    }
+    body.dark-mode .toggle-closed {
+      color: #94a3b8;
+    }
+
+    /* Popups in Dark Mode */
+    body.dark-mode .leaflet-popup-content-wrapper,
+    body.dark-mode .leaflet-popup-tip {
+      background: #1e293b;
+      color: #f8fafc;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+    }
+    body.dark-mode .popup-title { color: #f8fafc; }
+    body.dark-mode .popup-title.closed s { color: #94a3b8; }
+    body.dark-mode .popup-meta { color: #94a3b8; }
+    body.dark-mode .popup-address { color: #cbd5e1; }
+    body.dark-mode .popup-notes { color: #e2e8f0; }
+    body.dark-mode .popup-links { border-top-color: #334155; }
+    body.dark-mode .popup-links a { color: #38bdf8; }
+
+    /* Badges in Dark Mode */
+    body.dark-mode .badge-two-star {
+      background: #451a03;
+      color: #fde68a;
+      border-color: #78350f;
+    }
+    body.dark-mode .badge-one-star {
+      background: #172554;
+      color: #93c5fd;
+      border-color: #1e40af;
+    }
+    body.dark-mode .badge-visited {
+      background: #022c22;
+      color: #6ee7b7;
+      border-color: #065f46;
+    }
+    body.dark-mode .badge-closed {
+      background: #450a0a;
+      color: #fca5a5;
+      border-color: #7f1d1d;
+    }
+
+    /* Controls in Dark Mode */
+    body.dark-mode .leaflet-bar a,
+    body.dark-mode .locate-btn {
+      background-color: #1e293b;
+      color: #f8fafc;
+      border-color: #334155;
+    }
+    body.dark-mode .leaflet-bar a:hover,
+    body.dark-mode .locate-btn:active {
+      background-color: #334155;
+    }
+    body.dark-mode .locate-btn svg {
+      fill: #f1f5f9;
     }
 
     /* Popup Styling */
@@ -171,6 +279,10 @@
       <input type="checkbox" id="toggleClosed" />
       <span>Closed</span>
     </label>
+    <div class="filter-separator"></div>
+    <button id="themeToggle" class="theme-btn" title="Toggle dark / light mode" aria-label="Toggle dark / light mode">
+      <span class="theme-icon">🌙</span><span class="theme-label">Theme</span>
+    </button>
   </div>
 
   <div id="map"></div>
@@ -236,13 +348,13 @@
       alert('Unable to find your location. Please ensure location services are enabled on your device.');
     });
 
-    /* Dynamic Esri Light Gray basemap */
-    var host = ['server', 'arcgisonline', 'com'].join('.');
-    var path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World_Light_Gray_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/');
-    L.tileLayer('https://' + host + '/' + path, {
-      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-      maxZoom: 16
-    }).addTo(map);
+    /* --- Tile Layers (Light & Dark) --- */
+    var lightTileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    var darkTileUrl  = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    var tileAttr = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
+
+    var lightLayer = L.tileLayer(lightTileUrl, { attribution: tileAttr, maxZoom: 16 });
+    var darkLayer  = L.tileLayer(darkTileUrl,  { attribution: tileAttr, maxZoom: 16 });
 
     /* 2. Custom Stacking Panes */
     map.createPane('closedPane');
@@ -264,40 +376,70 @@
     var allMarkers = [];
     var currentFilter = 'all';
     var showClosed = false;
+    var isDarkMode = false;
+
+    /* Marker color resolver: adapts pin colors for high contrast on light or dark basemaps */
+    function getMarkerColors(meta, isDark) {
+      if (meta.isClosed) {
+        return {
+          fillColor: isDark ? '#f87171' : '#ef4444',
+          strokeColor: isDark ? '#64748b' : '#94a3b8',
+          radius: 4.5,
+          opacity: isDark ? 0.7 : 0.5
+        };
+      } else if (meta.isTwoStar) {
+        return {
+          fillColor: isDark ? '#fbbf24' : '#d97706',
+          strokeColor: '#ffffff',
+          radius: 8,
+          opacity: 0.95
+        };
+      } else if (meta.isOneStar) {
+        return {
+          fillColor: isDark ? '#38bdf8' : '#2563eb',
+          strokeColor: '#ffffff',
+          radius: 6.5,
+          opacity: 0.9
+        };
+      } else {
+        return {
+          fillColor: isDark ? '#34d399' : '#10b981',
+          strokeColor: '#ffffff',
+          radius: 6,
+          opacity: 0.9
+        };
+      }
+    }
+
+    function updateMarkerStyles(isDark) {
+      allMarkers.forEach(function(m) {
+        var c = getMarkerColors(m.meta, isDark);
+        m.setStyle({
+          fillColor: c.fillColor,
+          color: c.strokeColor,
+          radius: c.radius,
+          fillOpacity: c.opacity
+        });
+      });
+    }
 
     /* Marker helper */
     function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) {
       var pane = 'visitedPane';
-      var fillColor = '#10b981';
-      var radius = 6;
-      var opacity = 0.9;
-      var strokeColor = '#ffffff';
+      if (isClosed) { pane = 'closedPane'; }
+      else if (isTwoStar) { pane = 'topStarPane'; }
+      else if (isOneStar) { pane = 'starPane'; }
 
-      if (isClosed) {
-        pane = 'closedPane';
-        fillColor = '#ef4444';
-        radius = 4.5;
-        opacity = 0.5;
-        strokeColor = '#94a3b8';
-      } else if (isTwoStar) {
-        pane = 'topStarPane';
-        fillColor = '#d97706';
-        radius = 8;
-        opacity = 0.95;
-      } else if (isOneStar) {
-        pane = 'starPane';
-        fillColor = '#2563eb';
-        radius = 6.5;
-        opacity = 0.9;
-      }
+      var meta = { isClosed: isClosed, isTwoStar: isTwoStar, isOneStar: isOneStar };
+      var c = getMarkerColors(meta, isDarkMode);
 
       return L.circleMarker([lat, lng], {
         pane: pane,
-        radius: radius,
-        fillColor: fillColor,
-        color: strokeColor,
+        radius: c.radius,
+        fillColor: c.fillColor,
+        color: c.strokeColor,
         weight: 1.5,
-        fillOpacity: opacity
+        fillOpacity: c.opacity
       });
     }
 
@@ -423,6 +565,59 @@
       showClosed = e.target.checked;
       applyFilters();
     });
+
+    /* --- Theme Toggle & Persistence Logic --- */
+    function applyTheme(dark) {
+      isDarkMode = dark;
+      if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        if (map.hasLayer(lightLayer)) { map.removeLayer(lightLayer); }
+        if (!map.hasLayer(darkLayer)) { darkLayer.addTo(map); }
+        var iconEl = document.querySelector('.theme-icon');
+        if (iconEl) iconEl.textContent = '☀️';
+        var labelEl = document.querySelector('.theme-label');
+        if (labelEl) labelEl.textContent = ' Light';
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.setAttribute('title', 'Switch to light mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+        if (map.hasLayer(darkLayer)) { map.removeLayer(darkLayer); }
+        if (!map.hasLayer(lightLayer)) { lightLayer.addTo(map); }
+        var iconEl = document.querySelector('.theme-icon');
+        if (iconEl) iconEl.textContent = '🌙';
+        var labelEl = document.querySelector('.theme-label');
+        if (labelEl) labelEl.textContent = ' Dark';
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.setAttribute('title', 'Switch to dark mode');
+      }
+      updateMarkerStyles(isDarkMode);
+    }
+
+    function toggleTheme() {
+      var next = !isDarkMode;
+      localStorage.setItem('pizza_map_theme', next ? 'dark' : 'light');
+      applyTheme(next);
+    }
+
+    var themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', toggleTheme);
+    }
+
+    // Initialize theme: saved preference -> OS preference fallback
+    var savedTheme = localStorage.getItem('pizza_map_theme');
+    var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var startDark = savedTheme !== null ? (savedTheme === 'dark') : systemPrefersDark;
+    applyTheme(startDark);
+
+    // Watch for OS theme changes if user has not set a manual preference
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (localStorage.getItem('pizza_map_theme') === null) {
+          applyTheme(e.matches);
+        }
+      });
+    }
   </script>
 </body>
 </html>
