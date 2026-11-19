@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aaron's Pizza Map</title>
-  
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
     body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     #map { height: 100vh; width: 100vw; }
-    
+
     /* Floating Filter Bar */
     .filter-bar {
       position: absolute;
@@ -28,6 +28,7 @@
       gap: 6px;
       flex-wrap: wrap;
     }
+
     .filter-btn {
       border: 1px solid #cbd5e1;
       background: #f8fafc;
@@ -131,9 +132,7 @@
     <button class="filter-btn" data-filter="★★">★★ Excellent</button>
     <button class="filter-btn" data-filter="★">★ Recommend</button>
     <button class="filter-btn" data-filter="✓">✓ Visited</button>
-
     <div class="filter-separator"></div>
-
     <label class="toggle-closed" title="Show or hide permanently closed venues">
       <input type="checkbox" id="toggleClosed" />
       <span>Closed</span>
@@ -143,11 +142,11 @@
   <div id="map"></div>
 
   <button id="locate-me" class="locate-btn" title="Find my location" aria-label="Find my location">
-  <svg viewBox="0 0 24 24">
-    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-  </svg>
+    <svg viewBox="0 0 24 24">
+      <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+    </svg>
   </button>
-  
+
   <!-- Leaflet & PapaParse Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -156,13 +155,13 @@
   <script>
     var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTBfwsJWM9BltaPVCYsrBSKaZD3iSo1T3ZybsRvfUTfE1CuZF3szp-FJDbkWuUGEFs0NmdBc4Ukqx3/pub?gid=1165000565&single=true&output=csv';
 
-/* 1. Initialise Map */
-var map = L.map('map').setView([40, -35], 3);
+    /* 1. Initialise Map */
+    var map = L.map('map').setView([40, -35], 3);
 
-// --- Geolocation FAB Logic ---
+    // --- Geolocation FAB Logic ---
     var locateBtn = document.getElementById('locate-me');
     var userLocationMarker = null;
-    
+
     if (locateBtn) {
       locateBtn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -170,7 +169,7 @@ var map = L.map('map').setView([40, -35], 3);
         map.locate({ setView: true, maxZoom: 14, enableHighAccuracy: true });
       });
     }
-    
+
     map.on('locationfound', function(e) {
       if (userLocationMarker) {
         userLocationMarker.setLatLng(e.latlng);
@@ -183,222 +182,207 @@ var map = L.map('map').setView([40, -35], 3);
           fillColor: '#ff4444',
           fillOpacity: 0.12
         }).addTo(map);
-        
+
         // Custom Pizza Hunter Pin
         var hunterIcon = L.divIcon({
           className: 'user-loc-hunter',
-          html: '<div style="font-size: 28px; line-height: 1; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45)); transform: translate(-2px, -2px);">🚶</div>',
+          html: '<div style="font-size: 28px; line-height: 1; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45)); transform: translate(-2px, -2px);">🍕</div>',
           iconSize: [30, 30],
           iconAnchor: [15, 15]
         });
-        
-        userLocationMarker = L.marker(e.latlng, {
-          icon: hunterIcon,
+
+        userLocationMarker = L.marker(e.latlng, { 
+          icon: hunterIcon, 
           zIndexOffset: 1000 // Keeps your location floating on top of nearby restaurant pins
         }).addTo(map);
       }
     });
-    
+
     map.on('locationerror', function(e) {
       alert('Unable to find your location. Please ensure location services are enabled on your device.');
     });
 
-/* Dynamic Esri Light Gray basemap */
-var host = ['server', 'arcgisonline', 'com'].join('.');
-var path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World_Light_Gray_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/');
-L.tileLayer('https://' + host + '/' + path, {
-  attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-  maxZoom: 16
-}).addTo(map);
+    /* Dynamic Esri Light Gray basemap */
+    var host = ['server', 'arcgisonline', 'com'].join('.');
+    var path = ['ArcGIS', 'rest', 'services', 'Canvas', 'World_Light_Gray_Base', 'MapServer', 'tile', '{z}', '{y}', '{x}'].join('/');
+    L.tileLayer('https://' + host + '/' + path, {
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+      maxZoom: 16
+    }).addTo(map);
 
-/* 2. Custom Stacking Panes */
-map.createPane('closedPane');
-map.getPane('closedPane').style.zIndex = 350;
+    /* 2. Custom Stacking Panes */
+    map.createPane('closedPane');
+    map.getPane('closedPane').style.zIndex = 350;
 
-map.createPane('visitedPane');
-map.getPane('visitedPane').style.zIndex = 380;
+    map.createPane('visitedPane');
+    map.getPane('visitedPane').style.zIndex = 380;
 
-map.createPane('starPane');
-map.getPane('starPane').style.zIndex = 410;
+    map.createPane('starPane');
+    map.getPane('starPane').style.zIndex = 410;
 
-map.createPane('topStarPane');
-map.getPane('topStarPane').style.zIndex = 420;
+    map.createPane('topStarPane');
+    map.getPane('topStarPane').style.zIndex = 420;
 
-/* 3. Layer Management */
-var markersGroup = L.featureGroup();
-map.addLayer(markersGroup);
+    /* 3. Layer Management */
+    var markersGroup = L.featureGroup();
+    map.addLayer(markersGroup);
 
-var allMarkers = [];
-var currentFilter = 'all';
-var showClosed = false;
+    var allMarkers = [];
+    var currentFilter = 'all';
+    var showClosed = false;
 
-/* Marker helper */
-function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) {
-  var pane = 'visitedPane';
-  var fillColor = '#10b981';
-  var radius = 6;
-  var opacity = 0.9;
-  var strokeColor = '#ffffff';
+    /* Marker helper */
+    function createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar) {
+      var pane = 'visitedPane';
+      var fillColor = '#10b981';
+      var radius = 6;
+      var opacity = 0.9;
+      var strokeColor = '#ffffff';
 
-  if (isClosed) {
-    pane = 'closedPane';
-    fillColor = '#ef4444';
-    radius = 4.5;
-    opacity = 0.5;
-    strokeColor = '#94a3b8';
-  } else if (isTwoStar) {
-    pane = 'topStarPane';
-    fillColor = '#d97706';
-    radius = 8;
-    opacity = 0.95;
-  } else if (isOneStar) {
-    pane = 'starPane';
-    fillColor = '#2563eb';
-    radius = 6.5;
-    opacity = 0.9;
-  }
+      if (isClosed) {
+        pane = 'closedPane';
+        fillColor = '#ef4444';
+        radius = 4.5;
+        opacity = 0.5;
+        strokeColor = '#94a3b8';
+      } else if (isTwoStar) {
+        pane = 'topStarPane';
+        fillColor = '#d97706';
+        radius = 8;
+        opacity = 0.95;
+      } else if (isOneStar) {
+        pane = 'starPane';
+        fillColor = '#2563eb';
+        radius = 6.5;
+        opacity = 0.9;
+      }
 
-  return L.circleMarker([lat, lng], {
-    pane: pane,
-    radius: radius,
-    fillColor: fillColor,
-    color: strokeColor,
-    weight: 1.5,
-    fillOpacity: opacity
-  });
-}
+      return L.circleMarker([lat, lng], {
+        pane: pane,
+        radius: radius,
+        fillColor: fillColor,
+        color: strokeColor,
+        weight: 1.5,
+        fillOpacity: opacity
+      });
+    }
 
-/* 4. Parse CSV and build pins */
-Papa.parse(CSV_URL, {
-  download: true,
-  header: true,
-  skipEmptyLines: true,
-  complete: function(results) {
-    results.data.forEach(function(row) {
-      var lat = parseFloat(row.Lat);
-      var lng = parseFloat(row.Lng);
-      var venue = row.Venue || 'Pizzeria';
-      var rating = (row.Rating || '').trim();
-      var address = row.Address || '';
-      var notes = row.Notes || '';
-      var date = row.Date || '';
-      var venueUrl = (row['Venue URL'] || '').trim();
-      var visitUrl = (row['Visit URL'] || '').trim();
+    /* 4. Parse CSV and build pins */
+    Papa.parse(CSV_URL, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        results.data.forEach(function(row) {
+          var lat = parseFloat(row.Lat);
+          var lng = parseFloat(row.Lng);
+          var venue = row.Venue || 'Pizzeria';
+          var rating = (row.Rating || '').trim();
+          var address = row.Address || '';
+          var notes = row.Notes || '';
+          var date = row.Date || '';
+          var venueUrl = (row['Venue URL'] || '').trim();
+          var visitUrl = (row['Visit URL'] || '').trim();
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        var isClosed = rating.indexOf('×') !== -1;
-        var isTwoStar = rating.indexOf('★★') !== -1;
-        var isOneStar = !isTwoStar && (rating.indexOf('★') !== -1);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            var isClosed = rating.indexOf('×') !== -1;
+            var isTwoStar = rating.indexOf('★★') !== -1;
+            var isOneStar = !isTwoStar && (rating.indexOf('★') !== -1);
 
-        var marker = createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar);
+            var marker = createCircleMarker(lat, lng, isClosed, isTwoStar, isOneStar);
 
-        var badgeHtml = '<span class="popup-badge badge-visited">✓ Visited</span>';
-        if (isClosed) {
-          badgeHtml = '<span class="popup-badge badge-closed">× Permanently Closed</span>';
-        } else if (isTwoStar) {
-          badgeHtml = '<span class="popup-badge badge-two-star">★★ Excellent</span>';
-        } else if (isOneStar) {
-          badgeHtml = '<span class="popup-badge badge-one-star">★ Recommend</span>';
+            var badgeHtml = '<span class="popup-badge badge-visited">✓ Visited</span>';
+            if (isClosed) {
+              badgeHtml = '<span class="popup-badge badge-closed">× Permanently Closed</span>';
+            } else if (isTwoStar) {
+              badgeHtml = '<span class="popup-badge badge-two-star">★★ Excellent</span>';
+            } else if (isOneStar) {
+              badgeHtml = '<span class="popup-badge badge-one-star">★ Recommend</span>';
+            }
+
+            var linksHtml = '';
+            if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post ↗</a>'; }
+            if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
+
+            var titleHtml = isClosed
+              ? '<div class="popup-title closed"><s>' + venue + '</s><span class="closed-tag">(Closed)</span></div>'
+              : '<div class="popup-title">' + venue + '</div>';
+
+            var mapNavUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((venue ? venue + ' ' : '') + address);
+
+            var addressHtml = address
+              ? '<div class="popup-address"><a href="' + mapNavUrl + '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' + address + '</a></div>'
+              : '';
+
+            var popupContent = titleHtml +
+              '<div>' + badgeHtml + '</div>' +
+              (date ? '<div class="popup-meta">Last visited: ' + date + '</div>' : '') +
+              addressHtml +
+              (notes ? '<div class="popup-notes">"' + notes + '"</div>' : '') +
+              (linksHtml ? '<div class="popup-links">' + linksHtml + '</div>' : '');
+
+            marker.bindPopup(popupContent);
+
+            marker.meta = {
+              isClosed: isClosed,
+              isTwoStar: isTwoStar,
+              isOneStar: isOneStar
+            };
+
+            allMarkers.push(marker);
+          }
+        });
+
+        applyFilters();
+
+        var isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          // Sets a direct view on mobile so it doesn't zoom too far out on narrow screens
+          map.setView([38.0, -40.0], 3);
+        } else {
+          // Desktop / wide screens: fit US and Europe across the width
+          var defaultBounds = L.latLngBounds(
+            [24.0, -125.0], 
+            [58.0, 16.0]
+          );
+          map.fitBounds(defaultBounds, { padding: [20, 20] });
         }
-
-        var linksHtml = '';
-        if (visitUrl) { linksHtml += '<a href="' + visitUrl + '" target="_blank" rel="noopener">Post ↗</a>'; }
-        if (venueUrl) { linksHtml += '<a href="' + venueUrl + '" target="_blank" rel="noopener">Website ↗</a>'; }
-
-
-        var titleHtml = isClosed 
-          ? '<div class="popup-title closed"><s>' + venue + '</s><span class="closed-tag">(Closed)</span></div>'
-          : '<div class="popup-title">' + venue + '</div>';
-
-        var popupContent = titleHtml +
-          '<div>' + badgeHtml + '</div>' +
-          (date ? '<div class="popup-meta">Last visited: ' + date + '</div>' : '') +
-          var mapNavUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((venue ? venue + ' ' : '') + address);
-
-        // 1. Build universal Google Maps navigation URL
-        var mapNavUrl = 'https://www.google.com/maps/search/?api=1&query=' + 
-          encodeURIComponent((venue ? venue + ' ' : '') + address);
-
-        // 2. Wrap address in clickable link
-        var addressHtml = address
-          ? '<div class="popup-address"><a href="' + mapNavUrl + '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' + address + '</a></div>'
-          : '';
-
-        // 3. Assemble clean popup content
-        var popupContent = titleHtml +
-          '<div>' + badgeHtml + '</div>' +
-          (date ? '<div class="popup-meta">Last visited: ' + date + '</div>' : '') +
-          addressHtml +
-          (notes ? '<div class="popup-notes">"' + notes + '"</div>' : '') +
-          (linksHtml ? '<div class="popup-links">' + linksHtml + '</div>' : '');
-
-        marker.bindPopup(popupContent);
-        
-        marker.meta = {
-          isClosed: isClosed,
-          isTwoStar: isTwoStar,
-          isOneStar: isOneStar
-        };
-
-        allMarkers.push(marker);
       }
     });
 
-    applyFilters();
+    /* 5. Filter logic */
+    function applyFilters() {
+      markersGroup.clearLayers();
+      allMarkers.forEach(function(m) {
+        if (m.meta.isClosed && !showClosed) { return; }
 
-    var defaultBounds = L.latLngBounds(
-      [24.0, -125.0],
-      [58.0, 16.0]
-    );
-    var isMobile = window.innerWidth <= 768;
-    
-    if (isMobile) {
-      // Sets a direct view on mobile so it doesn't zoom too far out on narrow screens
-      map.setView([38.0, -40.0], 3);
-    } else {
-      // Desktop / wide screens: fit US and Europe across the width
-      var defaultBounds = L.latLngBounds(
-        [24.0, -125.0],
-        [58.0, 16.0]
-      );
-      map.fitBounds(defaultBounds, { padding: [20, 20] }); }
+        if (currentFilter === 'all') {
+          markersGroup.addLayer(m);
+        } else if (currentFilter === '★★' && m.meta.isTwoStar) {
+          markersGroup.addLayer(m);
+        } else if (currentFilter === '★' && m.meta.isOneStar) {
+          markersGroup.addLayer(m);
+        } else if (currentFilter === '✓' && (!m.meta.isTwoStar && !m.meta.isOneStar)) {
+          markersGroup.addLayer(m);
+        }
+      });
     }
-});
 
-/* 5. Filter logic */
-function applyFilters() {
-  markersGroup.clearLayers();
+    /* 6. Event listeners */
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentFilter = btn.getAttribute('data-filter');
+        applyFilters();
+      });
+    });
 
-  allMarkers.forEach(function(m) {
-    if (m.meta.isClosed && !showClosed) { return; }
-
-    if (currentFilter === 'all') {
-      markersGroup.addLayer(m);
-    } else if (currentFilter === '★★' && m.meta.isTwoStar) {
-      markersGroup.addLayer(m);
-    } else if (currentFilter === '★' && m.meta.isOneStar) {
-      markersGroup.addLayer(m);
-    } else if (currentFilter === '✓' && (!m.meta.isTwoStar && !m.meta.isOneStar)) {
-      markersGroup.addLayer(m);
-    }
-  });
-}
-
-/* 6. Event listeners */
-document.querySelectorAll('.filter-btn').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    currentFilter = btn.getAttribute('data-filter');
-    applyFilters();
-  });
-});
-
-document.getElementById('toggleClosed').addEventListener('change', function(e) {
-  showClosed = e.target.checked;
-  applyFilters();
-});
+    document.getElementById('toggleClosed').addEventListener('change', function(e) {
+      showClosed = e.target.checked;
+      applyFilters();
+    });
   </script>
 </body>
 </html>
-
