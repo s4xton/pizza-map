@@ -20,14 +20,67 @@
       right: 15px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
       padding: 6px 10px;
       border-radius: 8px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+      box-shadow: 0 2px 14px rgba(0, 0, 0, 0.16);
+      display: flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .filter-toggle-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+      user-select: none;
+    }
+
+    .toggle-pizza-icon {
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .toggle-filter-label {
+      flex-grow: 1;
+      white-space: nowrap;
+    }
+
+    .toggle-chevron {
+      font-size: 11px;
+      color: #64748b;
+      transition: transform 0.2s ease;
+      margin-left: 4px;
+    }
+
+    .filter-content {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
+    }
+
+    .filter-buttons-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-utility-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .filter-btn {
@@ -89,32 +142,58 @@
       accent-color: #ef4444;
     }
 
-    /* Stack filter options on narrow displays */
+    /* Stack & Collapse filter options on narrow displays */
     @media (max-width: 768px) {
       .filter-bar {
         top: 12px;
         right: 12px;
         flex-direction: column;
         align-items: stretch;
-        gap: 5px;
-        padding: 6px;
-        min-width: 132px;
+        padding: 0;
+        border-radius: 20px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+        min-width: 136px;
+        max-width: 200px;
+        overflow: hidden;
       }
 
-      .filter-btn, .theme-btn {
+      .filter-bar.open {
+        border-radius: 12px;
+      }
+
+      .filter-toggle-btn {
+        display: flex;
+      }
+
+      .filter-bar.open .toggle-chevron {
+        transform: rotate(180deg);
+      }
+
+      .filter-content {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding: 6px 8px 8px 8px;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      .filter-bar.open .filter-content {
+        display: flex;
+      }
+
+      .filter-buttons-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+      }
+
+      .filter-btn {
         text-align: left;
         padding: 6px 10px;
         font-size: 12px;
         width: 100%;
         box-sizing: border-box;
-      }
-
-      .theme-btn {
-        justify-content: flex-start;
-      }
-      .theme-label {
-        display: inline;
-        font-weight: 500;
       }
 
       .filter-separator {
@@ -123,10 +202,28 @@
         margin: 2px 0;
       }
 
+      .filter-utility-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        width: 100%;
+      }
+
       .toggle-closed {
         padding: 4px 6px;
         font-size: 12px;
-        justify-content: flex-start;
+        margin: 0;
+      }
+
+      .theme-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+
+      .theme-label {
+        display: inline;
+        font-size: 11px;
       }
     }
 
@@ -137,6 +234,15 @@
     body.dark-mode .filter-bar {
       background: rgba(15, 23, 42, 0.92);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+    body.dark-mode .filter-toggle-btn {
+      color: #f1f5f9;
+    }
+    body.dark-mode .toggle-chevron {
+      color: #94a3b8;
+    }
+    body.dark-mode .filter-content {
+      border-top-color: #334155;
     }
     body.dark-mode .filter-btn,
     body.dark-mode .theme-btn {
@@ -269,20 +375,31 @@
 </head>
 <body>
 
-  <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">All</button>
-    <button class="filter-btn" data-filter="★★">★★ Excellent</button>
-    <button class="filter-btn" data-filter="★">★ Recommend</button>
-    <button class="filter-btn" data-filter="✓">✓ Visited</button>
-    <div class="filter-separator"></div>
-    <label class="toggle-closed" title="Show or hide permanently closed venues">
-      <input type="checkbox" id="toggleClosed" />
-      <span>Closed</span>
-    </label>
-    <div class="filter-separator"></div>
-    <button id="themeToggle" class="theme-btn" title="Toggle dark / light mode" aria-label="Toggle dark / light mode">
-      <span class="theme-icon">🌙</span><span class="theme-label">Theme</span>
+  <div class="filter-bar" id="filterBar">
+    <button id="filterToggle" class="filter-toggle-btn" aria-label="Toggle filters" title="Toggle filters">
+      <span class="toggle-pizza-icon">🍕</span>
+      <span class="toggle-filter-label" id="filterStatusLabel">Filters: All</span>
+      <span class="toggle-chevron" id="filterChevron">▾</span>
     </button>
+
+    <div class="filter-content" id="filterContent">
+      <div class="filter-buttons-group">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="★★">★★ Excellent</button>
+        <button class="filter-btn" data-filter="★">★ Recommend</button>
+        <button class="filter-btn" data-filter="✓">✓ Visited</button>
+      </div>
+      <div class="filter-separator"></div>
+      <div class="filter-utility-row">
+        <label class="toggle-closed" title="Show or hide permanently closed venues">
+          <input type="checkbox" id="toggleClosed" />
+          <span>Closed</span>
+        </label>
+        <button id="themeToggle" class="theme-btn" title="Toggle dark / light mode" aria-label="Toggle dark / light mode">
+          <span class="theme-icon">🌙</span><span class="theme-label">Theme</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div id="map"></div>
@@ -550,18 +667,47 @@ function getMarkerColors(meta, isDark) {
     }
 
     /* 6. Event listeners */
-    var filterBar = document.querySelector('.filter-bar');
+    var filterBar = document.getElementById('filterBar');
+    var filterToggleBtn = document.getElementById('filterToggle');
+    var filterStatusLabel = document.getElementById('filterStatusLabel');
+
     if (filterBar) {
       L.DomEvent.disableClickPropagation(filterBar);
       L.DomEvent.disableScrollPropagation(filterBar);
     }
+
+    if (filterToggleBtn && filterBar) {
+      filterToggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        filterBar.classList.toggle('open');
+      });
+    }
+
+    // Close mobile filter dropdown when tapping anywhere on the map
+    map.on('click', function() {
+      if (filterBar && filterBar.classList.contains('open')) {
+        filterBar.classList.remove('open');
+      }
+    });
 
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
         currentFilter = btn.getAttribute('data-filter');
+
+        // Update mobile pill label
+        if (filterStatusLabel) {
+          var labelText = 'Filters: ' + (currentFilter === 'all' ? 'All' : currentFilter);
+          filterStatusLabel.textContent = labelText;
+        }
+
         applyFilters();
+
+        // Auto-collapse on mobile once an option is selected
+        if (window.innerWidth <= 768 && filterBar) {
+          filterBar.classList.remove('open');
+        }
       });
     });
 
