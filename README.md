@@ -2,7 +2,7 @@
 
 A map that shows where I've had pizza, including places I'd recommend and pizzerias I think are excellent. 
 
-Live map: https://s4xton.github.io/pizza-map/
+Live map: https://s4xton.com/pizza-map/
 
 Reads a published Google Sheets CSV feed via Papa Parse. Custom Leaflet map panes ensure higher recommendations show above others. Full-viewport responsive interface with interactive popups displaying venue notes, addresses, and website links. 
 
