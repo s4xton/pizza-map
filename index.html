@@ -175,14 +175,23 @@ var map = L.map('map').setView([40, -35], 3);
       if (userLocationMarker) {
         userLocationMarker.setLatLng(e.latlng);
       } else {
-        // Drops a clean blue pulsating/solid dot at user's location
+        /// 1. Soft pulsing/translucent accuracy ring
+        L.circle(e.latlng, {
+          radius: Math.max(e.accuracy || 25, 25),
+          color: '#1a73e8',
+          weight: 1,
+          fillColor: '#1a73e8',
+          fillOpacity: 0.15
+        }).addTo(map);
+        
+        // 2. Crisp location dot with heavy white outline
         userLocationMarker = L.circleMarker(e.latlng, {
-          radius: 8,
+          radius: 7,
           fillColor: '#1a73e8',
           color: '#ffffff',
-          weight: 2,
+          weight: 3,
           opacity: 1,
-          fillOpacity: 0.9
+          fillOpacity: 1
         }).addTo(map);
       }
     });
