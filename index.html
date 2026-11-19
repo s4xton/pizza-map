@@ -258,7 +258,18 @@ Papa.parse(CSV_URL, {
       [24.0, -125.0],
       [58.0, 16.0]
     );
-    map.fitBounds(defaultBounds, { padding: [20, 20] });
+    var isMobile = window.innerWidth >= 768;
+    
+    if (isMobile) {
+      // Sets a direct view on mobile so it doesn't zoom too far out on narrow screens
+      map.setView([38.0, -40.0], 3);
+    } else {
+      // Desktop / wide screens: fit US and Europe across the width
+      var defaultBounds = L.latLngBounds(
+        [24.0, -125.0],
+        [58.0, 16.0]
+      );
+      map.fitBounds(defaultBounds, { padding: [20, 20] }); }
     }
 });
 
