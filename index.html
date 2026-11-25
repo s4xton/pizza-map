@@ -329,6 +329,133 @@
       height: 22px;
       fill: #333333;
     }
+
+    /* Map Venue Labels (zoom + collision aware) */
+    .leaflet-label-pane {
+      pointer-events: none;
+    }
+    .map-label-marker {
+      background: transparent;
+      border: none;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .map-label-marker.align-left {
+      justify-content: flex-end;
+    }
+    .map-label {
+      display: inline-block;
+      pointer-events: auto;
+      cursor: pointer;
+      max-width: 145px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 600;
+      color: #1e293b;
+      padding: 1px 4px;
+      border-radius: 4px;
+      text-shadow:
+        -1px -1px 0 rgba(255, 255, 255, 0.92),
+         1px -1px 0 rgba(255, 255, 255, 0.92),
+        -1px  1px 0 rgba(255, 255, 255, 0.92),
+         1px  1px 0 rgba(255, 255, 255, 0.92),
+         0    0   4px rgba(255, 255, 255, 0.95);
+      user-select: none;
+      transition: opacity 0.15s ease;
+    }
+    .map-label:hover {
+      background: rgba(255, 255, 255, 0.78);
+    }
+    .map-label.tier-two-star {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #92400e;
+    }
+    .map-label.tier-one-star {
+      font-weight: 600;
+      color: #1e40af;
+    }
+    .map-label.tier-visited {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: #065f46;
+    }
+    .map-label.tier-closed {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: #64748b;
+      text-decoration: line-through;
+      opacity: 0.8;
+    }
+
+    body.dark-mode .map-label {
+      color: #f1f5f9;
+      text-shadow:
+        -1px -1px 0 rgba(15, 23, 42, 0.95),
+         1px -1px 0 rgba(15, 23, 42, 0.95),
+        -1px  1px 0 rgba(15, 23, 42, 0.95),
+         1px  1px 0 rgba(15, 23, 42, 0.95),
+         0    0   5px rgba(15, 23, 42, 0.95);
+    }
+    body.dark-mode .map-label:hover {
+      background: rgba(15, 23, 42, 0.78);
+    }
+    body.dark-mode .map-label.tier-two-star {
+      color: #fcd34d;
+    }
+    body.dark-mode .map-label.tier-one-star {
+      color: #93c5fd;
+    }
+    body.dark-mode .map-label.tier-visited {
+      color: #6ee7b7;
+    }
+    body.dark-mode .map-label.tier-closed {
+      color: #94a3b8;
+    }
+
+    @media (max-width: 768px) {
+      .map-label {
+        max-width: 115px;
+        font-size: 10.5px;
+      }
+      .map-label.tier-two-star {
+        font-size: 11px;
+      }
+      .map-label.tier-visited,
+      .map-label.tier-closed {
+        font-size: 10px;
+      }
+    }
+
+    /* Desktop Hover Tooltip */
+    .leaflet-tooltip.pizza-hover-tooltip {
+      background: rgba(255, 255, 255, 0.96);
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+      white-space: nowrap;
+    }
+    .leaflet-tooltip-top.pizza-hover-tooltip::before {
+      border-top-color: rgba(255, 255, 255, 0.96);
+    }
+    body.dark-mode .leaflet-tooltip.pizza-hover-tooltip {
+      background: rgba(30, 41, 59, 0.96);
+      color: #f8fafc;
+      border-color: #334155;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+    }
+    body.dark-mode .leaflet-tooltip-top.pizza-hover-tooltip::before {
+      border-top-color: rgba(30, 41, 59, 0.96);
+    }
   </style>
 </head>
 <body>
@@ -444,14 +571,252 @@
     map.createPane('topStarPane');
     map.getPane('topStarPane').style.zIndex = 420;
 
+    map.createPane('labelPane');
+    map.getPane('labelPane').style.zIndex = 425;
+    map.getPane('labelPane').classList.add('leaflet-label-pane');
+
     /* 3. Layer Management */
     var markersGroup = L.featureGroup();
     map.addLayer(markersGroup);
 
+    var labelsGroup = L.layerGroup();
+    map.addLayer(labelsGroup);
+
     var allMarkers = [];
+    var visibleMarkers = [];
     var currentFilter = 'all';
     var showClosed = false;
     var isDarkMode = false;
+
+    /* Shared Hover Tooltip (desktop) */
+    var hoverTooltip = L.tooltip({
+      direction: 'top',
+      offset: [0, -8],
+      className: 'pizza-hover-tooltip',
+      opacity: 1
+    });
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* Fast offscreen canvas text width measurement */
+    var _measureCtx = document.createElement('canvas').getContext('2d');
+    function measureLabelWidth(text, isTwoStar, isMobile) {
+      var maxW = isMobile ? 115 : 145;
+      var fontSize = isTwoStar ? (isMobile ? 11 : 11.5) : (isMobile ? 10.5 : 11);
+      var fontWeight = isTwoStar ? 700 : 600;
+      if (_measureCtx) {
+        _measureCtx.font = fontWeight + ' ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        return Math.min(Math.ceil(_measureCtx.measureText(text).width) + 10, maxW);
+      }
+      return Math.min(text.length * 6.5 + 10, maxW);
+    }
+
+    function rectsOverlap(a, b, pad) {
+      return !(
+        a.right + pad <= b.left ||
+        a.left - pad >= b.right ||
+        a.bottom + pad <= b.top ||
+        a.top - pad >= b.bottom
+      );
+    }
+
+    function getUiExclusionRects() {
+      var rects = [];
+      var mapEl = map.getContainer();
+      if (!mapEl) return rects;
+      var mapRect = mapEl.getBoundingClientRect();
+      var selectors = ['#filterBar', '#locate-me', '.leaflet-control-zoom'];
+      selectors.forEach(function(sel) {
+        var el = document.querySelector(sel);
+        if (el) {
+          var r = el.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            rects.push({
+              left: r.left - mapRect.left,
+              top: r.top - mapRect.top,
+              right: r.right - mapRect.left,
+              bottom: r.bottom - mapRect.top
+            });
+          }
+        }
+      });
+      return rects;
+    }
+
+    function getLabelMinZoom(meta) {
+      if (meta.isClosed) return 13;
+      if (meta.isTwoStar) return 11;
+      if (meta.isOneStar) return currentFilter === '★' ? 11 : 12;
+      return currentFilter === '✓' ? 12 : 13;
+    }
+
+    function buildLabelIcon(meta, w, labelH, anchor, align) {
+      var tierClass = 'tier-visited';
+      if (meta.isClosed) tierClass = 'tier-closed';
+      else if (meta.isTwoStar) tierClass = 'tier-two-star';
+      else if (meta.isOneStar) tierClass = 'tier-one-star';
+
+      var safeName = escapeHtml(meta.venue);
+      var markerAlignClass = align === 'left' ? ' align-left' : '';
+      return L.divIcon({
+        className: 'map-label-marker' + markerAlignClass,
+        html: '<span class="map-label ' + tierClass + '" title="' + safeName + '">' + safeName + '</span>',
+        iconSize: [w, labelH],
+        iconAnchor: anchor
+      });
+    }
+
+    function createLabelMarker(marker, icon) {
+      var lm = L.marker(marker.getLatLng(), {
+        pane: 'labelPane',
+        icon: icon,
+        interactive: true,
+        keyboard: false
+      });
+
+      lm.on('click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        marker.openPopup();
+      });
+
+      return lm;
+    }
+
+    var _labelUpdateRaf = null;
+    function scheduleUpdateLabels() {
+      if (_labelUpdateRaf) {
+        cancelAnimationFrame(_labelUpdateRaf);
+      }
+      _labelUpdateRaf = requestAnimationFrame(function() {
+        _labelUpdateRaf = null;
+        updateLabels();
+      });
+    }
+
+    function updateLabels() {
+      labelsGroup.clearLayers();
+      visibleMarkers.forEach(function(m) { m._labelShown = false; });
+
+      var zoom = map.getZoom();
+      if (zoom < 11 || visibleMarkers.length === 0) return;
+
+      var mapSize = map.getSize();
+      var isMobile = window.innerWidth <= 768;
+      var bounds = map.getBounds().pad(0.08);
+      var occupied = getUiExclusionRects();
+      var dotHitboxes = [];
+
+      // Gather visible markers inside viewport and reserve their dot hitboxes first
+      var inView = [];
+      visibleMarkers.forEach(function(m) {
+        var ll = m.getLatLng();
+        if (!bounds.contains(ll)) return;
+        var pt = map.latLngToContainerPoint(ll);
+        var r = m.options.radius || 6;
+        dotHitboxes.push({
+          marker: m,
+          left: pt.x - r - 2,
+          top: pt.y - r - 2,
+          right: pt.x + r + 2,
+          bottom: pt.y + r + 2
+        });
+        inView.push({ marker: m, pt: pt, r: r });
+      });
+
+      // Filter to markers eligible at current zoom and sort by tier priority
+      var candidates = inView.filter(function(item) {
+        return zoom >= getLabelMinZoom(item.marker.meta);
+      });
+
+      candidates.sort(function(a, b) {
+        return b.marker.meta.priority - a.marker.meta.priority;
+      });
+
+      var labelH = isMobile ? 16 : 18;
+      var edgePad = 8;
+
+      candidates.forEach(function(item) {
+        var m = item.marker;
+        var pt = item.pt;
+        var r = item.r;
+        var w = measureLabelWidth(m.meta.venue, m.meta.isTwoStar, isMobile);
+
+        // Try placing to the right of the dot, then fallback to the left
+        var placements = [
+          {
+            align: 'right',
+            rect: {
+              left: pt.x + r + 5,
+              top: pt.y - labelH / 2,
+              right: pt.x + r + 5 + w,
+              bottom: pt.y + labelH / 2
+            },
+            anchor: [-r - 5, labelH / 2]
+          },
+          {
+            align: 'left',
+            rect: {
+              left: pt.x - r - 5 - w,
+              top: pt.y - labelH / 2,
+              right: pt.x - r - 5,
+              bottom: pt.y + labelH / 2
+            },
+            anchor: [r + 5 + w, labelH / 2]
+          }
+        ];
+
+        for (var i = 0; i < placements.length; i++) {
+          var p = placements[i];
+          var rect = p.rect;
+          if (
+            rect.left < edgePad ||
+            rect.top < edgePad ||
+            rect.right > mapSize.x - edgePad ||
+            rect.bottom > mapSize.y - edgePad
+          ) {
+            continue;
+          }
+
+          var collides = false;
+          for (var j = 0; j < occupied.length; j++) {
+            if (rectsOverlap(rect, occupied[j], 4)) {
+              collides = true;
+              break;
+            }
+          }
+          if (!collides) {
+            for (var k = 0; k < dotHitboxes.length; k++) {
+              if (dotHitboxes[k].marker === m) continue;
+              if (rectsOverlap(rect, dotHitboxes[k], 2)) {
+                collides = true;
+                break;
+              }
+            }
+          }
+
+          if (!collides) {
+            occupied.push(rect);
+            var labelIcon = buildLabelIcon(m.meta, w, labelH, p.anchor, p.align);
+            if (!m._labelMarker) {
+              m._labelMarker = createLabelMarker(m, labelIcon);
+            } else {
+              m._labelMarker.setIcon(labelIcon);
+            }
+
+            m._labelShown = true;
+            labelsGroup.addLayer(m._labelMarker);
+            break;
+          }
+        }
+      });
+    }
 
 /* Marker color resolver: softened, cohesive palette for dark mode */
 function getMarkerColors(meta, isDark) {
@@ -578,11 +943,45 @@ function getMarkerColors(meta, isDark) {
 
             marker.bindPopup(popupContent);
 
+            var priority = 1;
+            if (isClosed) priority = 0;
+            else if (isTwoStar) priority = 3;
+            else if (isOneStar) priority = 2;
+
             marker.meta = {
+              venue: venue,
               isClosed: isClosed,
               isTwoStar: isTwoStar,
-              isOneStar: isOneStar
+              isOneStar: isOneStar,
+              priority: priority
             };
+
+            marker.on('mouseover', function(e) {
+              if (e.originalEvent && e.originalEvent.pointerType === 'touch') return;
+              if (this._labelShown || this.isPopupOpen()) return;
+              var prefix = '';
+              if (this.meta.isTwoStar) prefix = '★★ ';
+              else if (this.meta.isOneStar) prefix = '★ ';
+              var suffix = this.meta.isClosed ? ' (Closed)' : '';
+              hoverTooltip
+                .setLatLng(this.getLatLng())
+                .setContent(escapeHtml(prefix + this.meta.venue + suffix));
+              if (!map.hasLayer(hoverTooltip)) {
+                hoverTooltip.addTo(map);
+              }
+            });
+
+            marker.on('mouseout', function() {
+              if (map.hasLayer(hoverTooltip)) {
+                map.removeLayer(hoverTooltip);
+              }
+            });
+
+            marker.on('popupopen', function() {
+              if (map.hasLayer(hoverTooltip)) {
+                map.removeLayer(hoverTooltip);
+              }
+            });
 
             allMarkers.push(marker);
           }
@@ -609,20 +1008,33 @@ function getMarkerColors(meta, isDark) {
     /* 5. Filter logic */
     function applyFilters() {
       markersGroup.clearLayers();
+      visibleMarkers = [];
       allMarkers.forEach(function(m) {
         if (m.meta.isClosed && !showClosed) { return; }
 
+        var include = false;
         if (currentFilter === 'all') {
-          markersGroup.addLayer(m);
+          include = true;
         } else if (currentFilter === '★★' && m.meta.isTwoStar) {
-          markersGroup.addLayer(m);
+          include = true;
         } else if (currentFilter === '★' && m.meta.isOneStar) {
-          markersGroup.addLayer(m);
+          include = true;
         } else if (currentFilter === '✓' && (!m.meta.isTwoStar && !m.meta.isOneStar)) {
+          include = true;
+        }
+
+        if (include) {
           markersGroup.addLayer(m);
+          visibleMarkers.push(m);
         }
       });
+      scheduleUpdateLabels();
     }
+
+    map.on('zoomstart', function() {
+      labelsGroup.clearLayers();
+    });
+    map.on('moveend zoomend resize', scheduleUpdateLabels);
 
     /* 6. Event listeners */
     var filterBar = document.getElementById('filterBar');
