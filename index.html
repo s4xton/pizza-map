@@ -347,9 +347,10 @@
     }
     .map-label {
       display: inline-block;
+      flex: 0 0 auto;
       pointer-events: auto;
       cursor: pointer;
-      max-width: 145px;
+      max-width: 175px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -420,7 +421,7 @@
 
     @media (max-width: 768px) {
       .map-label {
-        max-width: 115px;
+        max-width: 135px;
         font-size: 10.5px;
       }
       .map-label.tier-two-star {
@@ -605,17 +606,30 @@
         .replace(/'/g, '&#39;');
     }
 
-    /* Fast offscreen canvas text width measurement */
-    var _measureCtx = document.createElement('canvas').getContext('2d');
-    function measureLabelWidth(text, isTwoStar, isMobile) {
-      var maxW = isMobile ? 115 : 145;
-      var fontSize = isTwoStar ? (isMobile ? 11 : 11.5) : (isMobile ? 10.5 : 11);
-      var fontWeight = isTwoStar ? 700 : 600;
-      if (_measureCtx) {
-        _measureCtx.font = fontWeight + ' ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        return Math.min(Math.ceil(_measureCtx.measureText(text).width) + 10, maxW);
+    /* Exact cached DOM label width measurement (matches rendered font & padding) */
+    var _measureEl = null;
+    function measureLabelWidth(marker, isMobile) {
+      var key = isMobile ? 'm' : 'd';
+      if (marker._measuredW && marker._measuredWKey === key) {
+        return marker._measuredW;
       }
-      return Math.min(text.length * 6.5 + 10, maxW);
+      if (!_measureEl) {
+        _measureEl = document.createElement('span');
+        _measureEl.style.position = 'fixed';
+        _measureEl.style.left = '-9999px';
+        _measureEl.style.top = '-9999px';
+        _measureEl.style.visibility = 'hidden';
+        _measureEl.style.pointerEvents = 'none';
+        document.body.appendChild(_measureEl);
+      }
+      var meta = marker.meta;
+      var tierClass = meta.isClosed ? 'tier-closed' : (meta.isTwoStar ? 'tier-two-star' : (meta.isOneStar ? 'tier-one-star' : 'tier-visited'));
+      _measureEl.className = 'map-label ' + tierClass;
+      _measureEl.textContent = meta.venue;
+      var w = Math.ceil(_measureEl.getBoundingClientRect().width) + 2;
+      marker._measuredW = w;
+      marker._measuredWKey = key;
+      return w;
     }
 
     function rectsOverlap(a, b, pad) {
@@ -746,7 +760,7 @@
         var m = item.marker;
         var pt = item.pt;
         var r = item.r;
-        var w = measureLabelWidth(m.meta.venue, m.meta.isTwoStar, isMobile);
+        var w = measureLabelWidth(m, isMobile);
 
         // Try placing to the right of the dot, then fallback to the left
         var placements = [
